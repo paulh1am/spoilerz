@@ -1,86 +1,61 @@
-function handleTextUpdate(action, textToProcess) {
-    var elements = document.getElementsByTagName('*');
-    for (var i = 0; i < elements.length; i++) {
-        var element = elements[i];
-        for (var j = 0; j < element.childNodes.length; j++) {
-            var node = element.childNodes[j];
-            if (node.nodeType === 3) {
-                var text = node.nodeValue;
-                var replacedText = text;
-                if (action === "hide") {
-                    replacedText = text.replace(new RegExp(textToProcess, 'gi'), '[Hidden]');
-                } else if (action === "refreshView") {
-                    replacedText = text.replace(new RegExp('\\[Hidden\\]', 'gi'), '[*Refresh to View]');
-                }
-                if (replacedText !== text) {
-                    element.replaceChild(document.createTextNode(replacedText), node);
-                }
-            }
-        }
-    }
-}
-
-// chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-//     handleTextUpdate(request.action, request.text);
-// });
-
-// chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-//     handleHideUnhide(request.action, request.text);
-// });
 
 // ... rest of your content.js code
 
 
-function hideText(textToHide, index) {
+function hideText(textToHide, uniqueId) {
     var elements = document.getElementsByTagName('*');
     for (var i = 0; i < elements.length; i++) {
         var element = elements[i];
         for (var j = 0; j < element.childNodes.length; j++) {
             var node = element.childNodes[j];
-            if (node.nodeType === 3) {
-                var text = node.nodeValue;
-                var replacedText = text.replace(new RegExp(textToHide, 'gi'), '[Hidden' + index + ']');
-                if (replacedText !== text) {
-                    element.replaceChild(document.createTextNode(replacedText), node);
-                }
+            if (node.nodeType === 3 && node.nodeValue.includes(textToHide)) {
+                var replacementText = 'Spoiler hidden'; // The text to display instead of the spoiler
+
+                var span = document.createElement('span');
+                span.setAttribute('data-hidden-id', uniqueId);
+                span.textContent = replacementText; // Set the replacement text
+                span.style.cursor = 'pointer'; // Optional: change cursor to indicate clickable
+                span.onclick = function() { unhideText(uniqueId); }; // Optional: click to unhide
+
+                element.replaceChild(span, node);
             }
         }
     }
 }
 
-function unhideText(index) {
-    var elements = document.getElementsByTagName('*');
-    for (var i = 0; i < elements.length; i++) {
-        var element = elements[i];
-        for (var j = 0; j < element.childNodes.length; j++) {
-            var node = element.childNodes[j];
-            if (node.nodeType === 3) {
-                var text = node.nodeValue;
-                var replacedText = text.replace(new RegExp('\\[Hidden' + index + '\\]', 'gi'), '[*Refresh to View Spoiler*]');
-                if (replacedText !== text) {
-                    element.replaceChild(document.createTextNode(replacedText), node);
-                }
-            }
+function unhideText(uniqueId) {
+    var hiddenElements = document.querySelectorAll('span[data-hidden-id="' + uniqueId + '"]');
+    hiddenElements.forEach(function(element) {
+        if (element.textContent === 'Spoiler hidden') {
+            // Replace with original text
+            element.textContent = element.getAttribute('data-original-text');
+        } else {
+            // Store original text and hide it again
+            element.setAttribute('data-original-text', element.textContent);
+            element.textContent = 'Spoiler hidden';
         }
-    }
+    });
 }
+
 
 
 //chrome runtime listener actions
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.action === "hide") {
-        chrome.storage.local.get({hiddenTexts: []}, function(result) {
-            var index = result.hiddenTexts.indexOf(request.text);
-            if (index !== -1) {
-                hideText(request.text, index);
+        // Retrieve the text using the unique ID
+        chrome.storage.local.get({hiddenTexts: {}}, function(result) {
+            var textToHide = result.hiddenTexts[request.uniqueId];
+            if (textToHide) {
+                hideText(textToHide, request.uniqueId);
             }
         });
     }
-    
-     // Handling the 'unhide' action
     else if (request.action === "unhide") {
-        unhideText(request.index);
+        // Unhide using the unique ID
+        console.log("unhiding")
+        console.log(request.uniqueId);
+        unhideText(request.uniqueId);
     }
 });
 
@@ -88,9 +63,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
 
 // Check storage and hide text on page load
-chrome.storage.local.get({hiddenTexts: []}, function(result) {
+chrome.storage.local.get({hiddenTexts: {}}, function(result) {
     var hiddenTexts = result.hiddenTexts;
-    hiddenTexts.forEach(text => {
-        hideText(text);
+    Object.entries(hiddenTexts).forEach(([uniqueId, text]) => {
+        hideText(text, uniqueId);
     });
 });
