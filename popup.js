@@ -64,7 +64,8 @@ function addTextToStorage(textToAdd) {
 
 
 document.getElementById('hideTextButton').addEventListener('click', function() {
-    var textToHide = document.getElementById('textToHide').value;
+    var textToHideInput = document.getElementById('textToHide');
+    var textToHide = textToHideInput.value;
     if (textToHide) {
         chrome.storage.local.get({hiddenTexts: {}}, function(result) {
             // Convert result.hiddenTexts to an object if it's not
@@ -90,6 +91,9 @@ document.getElementById('hideTextButton').addEventListener('click', function() {
                 });
             }
         });
+        textToHideInput.value='';
+
+
     }
 });
 

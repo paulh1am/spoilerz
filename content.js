@@ -10,9 +10,9 @@ function hideText(textToHide, uniqueId) {
             var node = element.childNodes[j];
             if (node.nodeType === 3 && node.nodeValue.includes(textToHide)) {
                 var replacementText = 'Spoiler hidden'; // The text to display instead of the spoiler
-
                 var span = document.createElement('span');
                 span.setAttribute('data-hidden-id', uniqueId);
+                span.setAttribute('data-original-text', node.nodeValue); // Store the original text
                 span.textContent = replacementText; // Set the replacement text
                 span.style.cursor = 'pointer'; // Optional: change cursor to indicate clickable
                 span.onclick = function() { unhideText(uniqueId); }; // Optional: click to unhide
@@ -26,14 +26,10 @@ function hideText(textToHide, uniqueId) {
 function unhideText(uniqueId) {
     var hiddenElements = document.querySelectorAll('span[data-hidden-id="' + uniqueId + '"]');
     hiddenElements.forEach(function(element) {
-        if (element.textContent === 'Spoiler hidden') {
-            // Replace with original text
-            element.textContent = element.getAttribute('data-original-text');
-        } else {
-            // Store original text and hide it again
-            element.setAttribute('data-original-text', element.textContent);
-            element.textContent = 'Spoiler hidden';
-        }
+        var originalText = element.getAttribute('data-original-text');
+        var isSpoilerHidden = element.textContent === 'Spoiler hidden';
+
+        element.textContent = isSpoilerHidden ? originalText : 'Spoiler hidden';
     });
 }
 
